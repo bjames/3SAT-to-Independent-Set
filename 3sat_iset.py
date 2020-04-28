@@ -2,6 +2,7 @@
 
 from random import randint
 from copy import deepcopy
+from networkx.algorithms.approximation import maximum_independent_set
 
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -106,12 +107,15 @@ class ThreeSAT:
     """
 
 
-    def __init__(self, size=3):
+    def __init__(self, size=3, num_literals = 0):
+
+        if num_literals == 0:
+            num_literals = size*3
 
         # ensure consistancy across values by creating literals here and using deep copies
-        literals = [ThreeSATLiteral(i) for i in range(0, 9)]
-        literal_locations = [[] for _ in range(9)]
-        negated_literal_locations = [[] for _ in range(9)]
+        literals = [ThreeSATLiteral(i) for i in range(0, num_literals)]
+        literal_locations = [[] for _ in range(num_literals)]
+        negated_literal_locations = [[] for _ in range(num_literals)]
 
         self.clause_list = []
 
@@ -125,7 +129,7 @@ class ThreeSAT:
 
                 while True:
 
-                    literal_id = randint(0, 8)
+                    literal_id = randint(0, num_literals - 1)
                     negated = bool(randint(0, 1))
                     literal = literals[literal_id]
 
@@ -148,7 +152,7 @@ class ThreeSAT:
         self.edge_list = []
 
         # build the edge list by comparing the list of literals to negated literals
-        for i in range(9):
+        for i in range(num_literals):
 
             literal_count = len(literal_locations[i])
             negated_literal_count = len(negated_literal_locations[i])
@@ -200,8 +204,14 @@ class ThreeSAT:
         else:
             raise StopIteration
 
+    
+    def _gen_random_clause(self, num_literals):
 
-def graph_three_sat(three_sat):
+        # TODO move the current logic here and make the default user provided clauses
+        pass
+
+
+def graph_three_sat(three_sat, find_unsat):
 
     graph = nx.Graph()
 
@@ -211,7 +221,7 @@ def graph_three_sat(three_sat):
 
     graph.add_edges_from(three_sat.edge_list)
     pos = nx.shell_layout(graph, scale=0.4)
-    k = nx.maximal_independent_set(graph)
+    k = maximum_independent_set(graph)
 
     color_map = []
 
@@ -222,6 +232,10 @@ def graph_three_sat(three_sat):
             color_map.append("gray")
 
     satisfiable = len(k) >= three_sat.size
+    
+    if find_unsat and satisfiable:
+
+        return 
 
     nx.draw_networkx(graph, font_size=8, node_color=color_map, pos=pos)
     plt.title(
@@ -235,6 +249,34 @@ if __name__ == "__main__":
 
     size = int(input("size: "))
 
+    num_literals = 0
+    max_literal_count = size * 3
+
+    while num_literals < 3 or num_literals > max_literal_count:
+        
+        try: 
+            
+            num_literals = int(input(f"number of unique literals (3-{size*3}): "))
+
+        except TypeError:
+
+            pass
+        
+    find_unsat = input("Find first unsatisfiable? [Y/n] ").lower()
+    
+    try:
+
+        if find_unsat[0] == "y":
+            find_unsat = True
+        else: 
+            find_unsat = False
+
+    except IndexError:
+
+        find_unsat = True
+    
+
     while True:
-        three_sat = ThreeSAT(size=size)
-        graph_three_sat(three_sat)
+        three_sat = ThreeSAT(size=size, num_literals=num_literals)
+        print(three_sat)
+        graph_three_sat(three_sat, find_unsat)
